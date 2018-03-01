@@ -26,12 +26,14 @@ private:
 	int mode;
 
 	int read_data_pins();
-	int set_channel(int channel_number);
 
 public:
 	Max114(int* data_pins,int* channel_pins, int RD_pin, int CS_pin, int WR_pin, int INT_pin, int MODE_pin);
 	int analog_read(unsigned int channel_number);
-	int set_mode(unsigned int mode);
+	int analog_read();
+	int set_mode(unsigned int new_mode);
+	int set_channel(unsigned int channel_number);
+	int read_current_channel();
 };
 
 #endif

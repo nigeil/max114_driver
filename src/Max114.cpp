@@ -19,6 +19,7 @@ Max114::Max114(int* data_pins_arg, int* channel_pins_arg, int RD_pin_arg, int CS
 	for (unsigned int i=0; i<N_CHANNELS; i++){
 		this->analog_values[i] = -1; // -1 is default, "no known read value")
 	}
+
 }
 
 int Max114::read_data_pins(){
@@ -29,7 +30,7 @@ int Max114::read_data_pins(){
 	return value;
 }
 
-int Max114::set_channel(int channel_number){
+int Max114::set_channel(unsigned int channel_number){
 	unsigned int channel_pin_A0 = 0;
 	unsigned int channel_pin_A1 = 0;
 
@@ -65,14 +66,21 @@ int Max114::set_channel(int channel_number){
 	return 0;
 }
 
-int Max114::analog_read(unsigned int channel_number){
+int Max114::analog_read(unsigned int channel_number) {
+	if(this->mode == 0) {
+		this->set_channel(channel_number);
+	}
+	else if(this->mode == 1) {
+		this->set_channel((channel_number + 1) % N_CHANNELS);
+	}
+	return this->analog_read();
+}
+
+int Max114::analog_read(){
 	unsigned int value = 0;
 
 	if(this->mode == 0){
-		// slower read only mode
-		
-		// select the channel
-		set_channel(channel_number);
+		// slightly slower read only mode
 
 		// initiate the conversion by driving CS and RD low
 		// hold RD low until data appears (INT goes low then high)
@@ -92,29 +100,28 @@ int Max114::analog_read(unsigned int channel_number){
 
 	}
 	else if (this->mode == 1){
-		// fast read-write mode
-		
-		//select the channel
-		set_channel(channel_number);
+		// fast PIPELINED read-write mode
+		// For pipelined mode, you will always get the previous 
+		// conversion result back. *Currently*, it is assumed that
+		// users will read analog pins in increasing order from 0,
+		// and so an offset has been provided (i.e., if you call 
+		// analog reads 0,1,2,3,0,..., you will always get the correct
+		// conversion result)
+
+		// This is working, but the interaface
+		// that has been written to access it hasn't been settled upon,
+		// so use with care and check changelogs.
 		
 		// start the conversion
 		digitalWriteFast(this->CS_pin, 0);
 		digitalWriteFast(this->WR_pin, 0);
-		nanosecond_delay(15);
-		digitalWriteFast(this->WR_pin, 1);
-		digitalWriteFast(this->CS_pin, 1);
-
-		// wait for data to be ready
-		while(digitalReadFast(this->INT_pin) == 1){
-			Serial.println("INT is HIGH");
-			continue;
-		}
+		nanosecond_delay(10); // empirical - this more than 10ns
 
 		// read the data when ready
-		digitalWriteFast(this->CS_pin, 0);
 		digitalWriteFast(this->RD_pin, 0);
 		value = this->read_data_pins();
 		digitalWriteFast(this->RD_pin, 1);
+		digitalWriteFast(this->WR_pin, 1);
 		digitalWriteFast(this->CS_pin, 1);
 
 		// analog read done; return the value
@@ -125,16 +132,18 @@ int Max114::analog_read(unsigned int channel_number){
 	}
 }
 
-int Max114::set_mode(unsigned int mode){
-	switch (mode) {
+int Max114::set_mode(unsigned int new_mode){
+	switch (new_mode) {
 		case 0: {
 			digitalWriteFast(this->MODE_pin, 0);
+			Serial.println("MODE 0");
 			this->mode = 0;
 			break;
 		}
 		case 1: {
 			digitalWriteFast(this->MODE_pin, 1);
 			this->mode = 1;
+			Serial.println("MODE 1");
 			break;
 		}
 		default: {

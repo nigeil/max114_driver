@@ -22,7 +22,7 @@ This driver depends on the Arduino framework for setting pin modes and using `di
 1. Clone this repository into your project's **lib/** space
 2. `#include <Max114.h>`
 3. Create a new Max114 object: `Max114 adc0 = new Max114(int* data_pins_arg, int* channel_pins_arg, int RD_pin_arg, int CS_pin_arg, int WR_pin_arg, int INT_pin_arg, int MODE_pin_arg)`; with arrays passed for the data pins [D0, D1, ..., D7] and channel select pins [A0, A1]. For example, if you connect D0, D1, D2, D3, D4, D5, D6, and D7 to pins 2,3,4,5,6,7,8,9 on your microcontroller, you could make a new array of integers: `int* data_pins = {2,3,4,5,6,7,8,9};` and pass that as the first argument to the constructor for the Max114 object. Likewise for the singular pins; if the MODE pin on the Max114 is connected to pin 17 on your microcontroller, pass the value (not array) 17 as the last argument.  
-4. Set the mode for the Max114: `adc0->set_mode(int MODE);`. Currently (2018-02-25) the Read-only mode (mode 0) of the Max114 is implemented and tested, so use `adc0->set_mode(0);`. 
+4. Set the mode for the Max114: `adc0->set_mode(int MODE);` MODE=0 gives the slightly slower read-only mode, whereas MODE=1 gives the faster pipelined write-read mode (not recommended at this time due to the fact that it always returns the result of the *previous* conversion and I have not decided how to wrap my interface around it for seamless operation). 
 5. Read from any of the 4/8 channels using `int value = adc0->analog_read(int CHANNEL_INDEX);` (zero-indexed, so use `adc0->analog_read(0)` to read IN1).
 
 -----
@@ -30,10 +30,12 @@ This driver depends on the Arduino framework for setting pin modes and using `di
 ## Notes
 
 ### Conversion speed/bandwidth
-* Minimal code to read a single channel rapidly using the read-only mode requires an average of 1.57us/sample on a Teensy 3.6 clocked at 216MHz (using the compile flags `-O3` and `-flto`). This corresponds to a sampling rate of ~0.637Msps, or about half of what is advertised by the manufacturer. This is still faster than the Teensy 3.6's onboard ADC, but the write-read mode described in the manufacturer's datasheet will be required to reach this chip's sampling rate.
+* Minimal code to read a single channel rapidly using the read-only mode requires an average of 1.57us/sample on a Teensy 3.6 clocked at 216MHz (using the compile flags `-O3` and `-flto`). This corresponds to a sampling rate of ~0.637Msps, or about half of what is advertised by the manufacturer
 * To read all 4 channels, it requires approximately 6us total. This example/test code is provided in the **main.cpp** file.
+* Doing the same test with pipelined write-read mode (mode = 1), reading all 4 channels takes a total of 3.79us, for a sampling rate of ~1.058Msps, nearly to manufacturer specs.
 
 ### TODO list 
-* Fix the write-read mode (mode 1) which promises a slightly higher conversion speed
-* Implement and test the pipelined write-read mode for optimized multi-channel reading
-* Write more tests/example code
+- [ ] Fix the write-read mode (mode 1) which promises a slightly higher conversion speed (somewhat fixed with pipelined reading, see below)
+- [x] Implement and test the pipelined write-read mode for optimized multi-channel reading
+- [ ] Solidify interface for pipelined reading mode
+- [ ] Write more tests/example code

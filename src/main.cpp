@@ -18,6 +18,7 @@ double cumulative_time;
 
 void setup(){
 	Serial.begin(9600);
+	delay(1000);
 	Serial.println("hello world!");
 
 	int data_pins[8];
@@ -37,11 +38,19 @@ void setup(){
 	pinMode(MODE_PIN, OUTPUT);
 
 	adc0 = new Max114(data_pins, channel_pins, CS_PIN, WR_PIN, RD_PIN, INT_PIN, MODE_PIN);
-	adc0->set_mode(0); // set to write-read mode
+	adc0->set_mode(1);
 	iteration = 0;
 	for(unsigned int i=0; i<N_CHANNELS; i++){
 		analog_values[i] = 0;
 	}
+
+	// start teensy cycle counter; normally in setup, here create it 
+	// assuming it hasn't been made yet
+	// Get cycle count as follows: current_cycles = ARM_DWT_CYCCNT;
+	// TODO: make sure this is only called once across the entire
+	// code's lifetime
+	ARM_DEMCR |= ARM_DEMCR_TRCENA;  
+  	ARM_DWT_CTRL |= ARM_DWT_CTRL_CYCCNTENA;
 }
 
 void loop(){
